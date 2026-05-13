@@ -1,0 +1,29 @@
+# ── Credentials & secrets ──────────────────────────────────────────────────────
+backend/src/main/resources/application-local.properties
+**/.env
+**/.env.local
+**/.env.production
+**/.env.*.local
+
+# ── Frontend build ──────────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# ── Backend build ───────────────────────────────────────────────────────────────
+backend/target/
+backend/*.class
+
+# ── IDE ─────────────────────────────────────────────────────────────────────────
+.idea/
+*.iml
+.vscode/
+nbproject/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+
+# ── OS ──────────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db

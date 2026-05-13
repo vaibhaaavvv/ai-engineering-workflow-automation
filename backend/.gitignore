@@ -1,0 +1,19 @@
+target/
+*.class
+
+# Local config — contains real DB credentials, never commit
+src/main/resources/application-local.properties
+application-local.properties
+
+# Secrets
+.env
+.env.local
+
+# IDE
+.idea/
+*.iml
+nbproject/
+.vscode/
+
+# OS
+.DS_Store
