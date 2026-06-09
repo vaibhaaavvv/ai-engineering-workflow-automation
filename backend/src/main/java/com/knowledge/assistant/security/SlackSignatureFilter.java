@@ -11,9 +11,11 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.*;
+import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
+import java.util.*;
 
 @Component
 public class SlackSignatureFilter extends OncePerRequestFilter {
@@ -86,6 +88,7 @@ public class SlackSignatureFilter extends OncePerRequestFilter {
     private static class CachedBodyRequestWrapper extends HttpServletRequestWrapper {
 
         private final byte[] cachedBody;
+        private Map<String, String[]> parsedParams;
 
         CachedBodyRequestWrapper(HttpServletRequest request, byte[] cachedBody) {
             super(request);
@@ -106,6 +109,51 @@ public class SlackSignatureFilter extends OncePerRequestFilter {
         @Override
         public BufferedReader getReader() {
             return new BufferedReader(new InputStreamReader(getInputStream(), StandardCharsets.UTF_8));
+        }
+
+        // For application/x-www-form-urlencoded requests (e.g. /slack/interactions),
+        // the servlet container parses parameters from the input stream. Since we consumed
+        // that stream in the filter, we re-parse from the cached bytes here.
+        @Override
+        public String getParameter(String name) {
+            String[] values = getParameterMap().get(name);
+            return (values != null && values.length > 0) ? values[0] : null;
+        }
+
+        @Override
+        public Map<String, String[]> getParameterMap() {
+            String contentType = getContentType();
+            if (contentType != null && contentType.contains("application/x-www-form-urlencoded")) {
+                if (parsedParams == null) {
+                    parsedParams = parseFormBody(new String(cachedBody, StandardCharsets.UTF_8));
+                }
+                return parsedParams;
+            }
+            return super.getParameterMap();
+        }
+
+        @Override
+        public Enumeration<String> getParameterNames() {
+            return Collections.enumeration(getParameterMap().keySet());
+        }
+
+        @Override
+        public String[] getParameterValues(String name) {
+            return getParameterMap().get(name);
+        }
+
+        private Map<String, String[]> parseFormBody(String body) {
+            Map<String, List<String>> map = new LinkedHashMap<>();
+            for (String pair : body.split("&")) {
+                if (pair.isEmpty()) continue;
+                String[] kv = pair.split("=", 2);
+                String key = URLDecoder.decode(kv[0], StandardCharsets.UTF_8);
+                String value = kv.length > 1 ? URLDecoder.decode(kv[1], StandardCharsets.UTF_8) : "";
+                map.computeIfAbsent(key, k -> new ArrayList<>()).add(value);
+            }
+            Map<String, String[]> result = new LinkedHashMap<>();
+            map.forEach((k, v) -> result.put(k, v.toArray(new String[0])));
+            return result;
         }
     }
 }
