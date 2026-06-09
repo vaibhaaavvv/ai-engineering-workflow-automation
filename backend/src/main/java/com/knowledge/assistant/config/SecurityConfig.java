@@ -43,6 +43,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/auth/**").permitAll()
                 .requestMatchers("/slack/**").permitAll()
+                .requestMatchers("/integrations/slack/callback").permitAll()
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session

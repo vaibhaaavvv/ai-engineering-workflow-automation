@@ -12,5 +12,5 @@ public interface IntegrationRepository extends JpaRepository<Integration, UUID> 
 
     Optional<Integration> findByUserIdAndIntegrationType(UUID userId, IntegrationType integrationType);
 
-    List<Integration> findByUserId(UUID userId);
+    Optional<Integration> findBySlackTeamId(String slackTeamId);
 }

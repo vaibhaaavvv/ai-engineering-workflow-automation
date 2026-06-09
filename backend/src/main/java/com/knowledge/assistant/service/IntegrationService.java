@@ -7,10 +7,12 @@ import com.knowledge.assistant.repository.IntegrationRepository;
 import com.knowledge.assistant.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class IntegrationService {
@@ -32,11 +34,7 @@ public class IntegrationService {
                 .findByUserIdAndIntegrationType(user.getId(), IntegrationType.SLACK)
                 .isPresent();
 
-        boolean githubConnected = integrationRepository
-                .findByUserIdAndIntegrationType(user.getId(), IntegrationType.GITHUB)
-                .isPresent();
-
-        return Map.of("slack", slackConnected, "github", githubConnected);
+        return Map.of("slack", slackConnected);
     }
 
     public Optional<Integration> getIntegration(String userEmail, IntegrationType type) {
@@ -44,5 +42,28 @@ public class IntegrationService {
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
         return integrationRepository.findByUserIdAndIntegrationType(user.getId(), type);
+    }
+
+    public Optional<Integration> getBySlackTeamId(String teamId) {
+        return integrationRepository.findBySlackTeamId(teamId);
+    }
+
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public void saveSlackIntegration(UUID userId, Map<String, Object> tokenData) {
+        Integration integration = integrationRepository
+                .findByUserIdAndIntegrationType(userId, IntegrationType.SLACK)
+                .orElse(new Integration());
+
+        integration.setUserId(userId);
+        integration.setIntegrationType(IntegrationType.SLACK);
+        integration.setAccessToken((String) tokenData.get("access_token"));
+
+        Map<String, Object> team = (Map<String, Object>) tokenData.get("team");
+        if (team != null) {
+            integration.setSlackTeamId((String) team.get("id"));
+        }
+
+        integrationRepository.save(integration);
     }
 }

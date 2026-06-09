@@ -82,6 +82,20 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketResponse createTicketFromSlack(UUID userId, String title, String type, String priority, String assignee) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new NoSuchElementException("User not found"));
+
+        CreateTicketRequest request = new CreateTicketRequest();
+        request.setTitle(title);
+        request.setType(TicketType.valueOf(type));
+        request.setPriority(TicketPriority.valueOf(priority));
+        request.setAssignee(assignee != null && !assignee.isBlank() ? assignee : "admin");
+
+        return createTicket(request, user.getEmail());
+    }
+
+    @Transactional
     public void deleteTicket(UUID id, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
