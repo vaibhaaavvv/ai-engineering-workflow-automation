@@ -61,8 +61,13 @@ public class AiService {
         - title: under 60 characters, start with an action verb when possible
         - description: 2-3 sentences covering what is broken or needed, what impact it has,
           and any relevant context from the message (who reported it, which screen/flow is affected)
-        - Casual chat, questions, reactions, greetings → NO_ACTION
-        - Only PROPOSE for clearly actionable engineering work
+        - Messages often mix casual language with a real issue embedded inside them.
+          Always scan the ENTIRE message. If any part describes an actionable engineering
+          problem, PROPOSE based on that part — ignore the surrounding small talk.
+          e.g. "Yeah sounds good. Also the export button is broken" → PROPOSE BUG
+          e.g. "Haha totally. Btw can we add dark mode?" → PROPOSE FEATURE
+        - Only return NO_ACTION when the ENTIRE message is purely social with zero
+          engineering content (greetings, reactions, emoji-only, scheduling chat, etc.)
         """;
 
     @Value("${openai.api.key}")
