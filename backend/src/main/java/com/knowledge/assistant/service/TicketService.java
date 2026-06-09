@@ -49,6 +49,13 @@ public class TicketService {
         return toResponse(ticketRepository.save(ticket));
     }
 
+    public List<TicketResponse> getOpenTicketsByUserId(UUID userId) {
+        return ticketRepository.findByUserIdAndStatusNotOrderByCreatedAtDesc(userId, TicketStatus.COMPLETED)
+                .stream()
+                .map(this::toResponse)
+                .collect(Collectors.toList());
+    }
+
     public List<TicketResponse> getTickets(String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));

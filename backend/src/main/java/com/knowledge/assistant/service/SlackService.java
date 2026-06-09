@@ -92,7 +92,10 @@ public class SlackService {
             Integration integration = integrationOpt.get();
             String botToken = integration.getAccessToken();
 
-            TicketAnalysis analysis = aiService.analyzeMessage(text);
+            List<com.knowledge.assistant.dto.TicketResponse> openTickets =
+                    ticketService.getOpenTicketsByUserId(integration.getUserId());
+
+            TicketAnalysis analysis = aiService.analyzeMessage(text, openTickets);
             if (!"PROPOSE".equals(analysis.getAction())) return;
 
             postProposal(channel, ts, botToken, analysis, integration.getUserId());

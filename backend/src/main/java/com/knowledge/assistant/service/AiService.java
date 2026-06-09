@@ -2,6 +2,7 @@ package com.knowledge.assistant.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.knowledge.assistant.dto.TicketAnalysis;
+import com.knowledge.assistant.dto.TicketResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -22,28 +23,46 @@ public class AiService {
 
     private static final String SYSTEM_PROMPT = """
         You are a ticket triage assistant for an engineering team.
-        Analyze Slack messages and decide if they describe actionable engineering work.
+        Analyze a Slack message and decide what action to take.
 
         Return ONLY valid JSON — no markdown, no explanation, no code blocks.
 
-        If actionable:
+        Possible responses:
+
+        If actionable and not already covered by an existing ticket:
         {"action":"PROPOSE","title":"...","type":"BUG|FEATURE|TASK|CHORE","priority":"LOW|MEDIUM|HIGH|CRITICAL","description":"...","assignee":"..."}
 
-        If not actionable:
+        If the message describes something already covered by an existing open ticket:
+        {"action":"DUPLICATE"}
+
+        If the message is not actionable engineering work:
         {"action":"NO_ACTION"}
 
-        Rules:
-        - BUG: something broken or not working as expected
-        - FEATURE: new functionality being requested
-        - TASK: technical work like refactoring, config changes, upgrades
-        - CHORE: documentation, cleanup, routine maintenance
-        - Only PROPOSE for clearly actionable engineering work
+        --- Type Classification (judge by INTENT, not keywords) ---
+        BUG     — something is broken, not working, crashing, erroring, or behaving wrongly.
+                  The word "bug" never needs to appear.
+                  e.g. "the login page won't load", "users are getting 500 errors", "the export looks corrupted"
+        FEATURE — a new capability or improvement that doesn't exist yet.
+                  e.g. "can we add email notifications?", "it would be great to filter by date"
+        TASK    — technical work with no direct user-facing output: refactoring, config changes, upgrades, migrations.
+                  e.g. "we should upgrade the DB version", "let's move this to a separate service"
+        CHORE   — documentation, cleanup, or routine non-technical maintenance.
+                  e.g. "update the README", "remove old feature flags"
+
+        --- Priority ---
+        CRITICAL — production down, data loss, or security vulnerability
+        HIGH     — major feature broken, many users affected
+        MEDIUM   — partial functionality broken, or an impactful feature request
+        LOW      — minor issue, cosmetic problem, or low-traffic path
+
+        --- Other rules ---
+        - assignee: extract the first name if the message mentions who should fix it
+          ("ask Vaibhav", "Vaibhav should fix this", "@vaibhav" → "Vaibhav"). If nobody is mentioned → "admin"
+        - title: under 60 characters, start with an action verb when possible
+        - description: 2-3 sentences covering what is broken or needed, what impact it has,
+          and any relevant context from the message (who reported it, which screen/flow is affected)
         - Casual chat, questions, reactions, greetings → NO_ACTION
-        - Keep title under 60 characters
-        - Description: 1-2 sentences summarising the issue
-        - assignee: extract a person's first name if the message mentions who should fix it
-          (e.g. "ask Vaibhav", "Vaibhav should fix this", "@vaibhav" → "Vaibhav")
-          If no person is mentioned, use "admin"
+        - Only PROPOSE for clearly actionable engineering work
         """;
 
     @Value("${openai.api.key}")
@@ -53,14 +72,16 @@ public class AiService {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @SuppressWarnings("unchecked")
-    public TicketAnalysis analyzeMessage(String messageText) {
+    public TicketAnalysis analyzeMessage(String messageText, List<TicketResponse> openTickets) {
         try {
+            String userContent = buildUserContent(messageText, openTickets);
+
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("model", "gpt-4o-mini");
-            body.put("max_tokens", 300);
+            body.put("max_tokens", 400);
             body.put("messages", List.of(
                     Map.of("role", "system", "content", SYSTEM_PROMPT),
-                    Map.of("role", "user", "content", messageText)
+                    Map.of("role", "user", "content", userContent)
             ));
 
             HttpHeaders headers = new HttpHeaders();
@@ -74,7 +95,6 @@ public class AiService {
             Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
             String text = ((String) message.get("content")).trim();
 
-            // Strip markdown code fences if the model wraps the JSON
             if (text.startsWith("```")) {
                 text = text.replaceAll("(?s)```[a-z]*\\n?", "").replaceAll("```", "").trim();
             }
@@ -87,5 +107,21 @@ public class AiService {
             noAction.setAction("NO_ACTION");
             return noAction;
         }
+    }
+
+    private String buildUserContent(String messageText, List<TicketResponse> openTickets) {
+        StringBuilder sb = new StringBuilder();
+        sb.append("Slack message:\n").append(messageText);
+
+        if (openTickets != null && !openTickets.isEmpty()) {
+            sb.append("\n\nExisting open tickets (check for duplicates before proposing):\n");
+            // Cap at 30 tickets to keep the prompt reasonable
+            openTickets.stream().limit(30).forEach(t ->
+                sb.append(String.format("- %s [%s] %s — Assignee: %s%n",
+                        t.getTicketNumber(), t.getType(), t.getTitle(), t.getAssignee()))
+            );
+        }
+
+        return sb.toString();
     }
 }
