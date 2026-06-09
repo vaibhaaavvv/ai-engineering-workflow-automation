@@ -31,17 +31,17 @@ public class SlackService {
     @Value("${slack.redirect.uri}")
     private String redirectUri;
 
-    private final ClaudeService claudeService;
+    private final AiService aiService;
     private final IntegrationService integrationService;
     private final TicketService ticketService;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Autowired
-    public SlackService(ClaudeService claudeService,
+    public SlackService(AiService aiService,
                         IntegrationService integrationService,
                         TicketService ticketService) {
-        this.claudeService = claudeService;
+        this.aiService = aiService;
         this.integrationService = integrationService;
         this.ticketService = ticketService;
     }
@@ -92,7 +92,7 @@ public class SlackService {
             Integration integration = integrationOpt.get();
             String botToken = integration.getAccessToken();
 
-            TicketAnalysis analysis = claudeService.analyzeMessage(text);
+            TicketAnalysis analysis = aiService.analyzeMessage(text);
             if (!"PROPOSE".equals(analysis.getAction())) return;
 
             postProposal(channel, ts, botToken, analysis, integration.getUserId());

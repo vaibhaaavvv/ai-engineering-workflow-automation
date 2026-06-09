@@ -14,11 +14,11 @@ import java.util.List;
 import java.util.Map;
 
 @Service
-public class ClaudeService {
+public class AiService {
 
-    private static final Logger log = LoggerFactory.getLogger(ClaudeService.class);
+    private static final Logger log = LoggerFactory.getLogger(AiService.class);
 
-    private static final String CLAUDE_API_URL = "https://api.anthropic.com/v1/messages";
+    private static final String OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 
     private static final String SYSTEM_PROMPT = """
         You are a ticket triage assistant for an engineering team.
@@ -46,7 +46,7 @@ public class ClaudeService {
           If no person is mentioned, use "admin"
         """;
 
-    @Value("${anthropic.api.key}")
+    @Value("${openai.api.key}")
     private String apiKey;
 
     private final RestTemplate restTemplate = new RestTemplate();
@@ -56,23 +56,25 @@ public class ClaudeService {
     public TicketAnalysis analyzeMessage(String messageText) {
         try {
             Map<String, Object> body = new LinkedHashMap<>();
-            body.put("model", "claude-sonnet-4-6");
+            body.put("model", "gpt-4o-mini");
             body.put("max_tokens", 300);
-            body.put("system", SYSTEM_PROMPT);
-            body.put("messages", List.of(Map.of("role", "user", "content", messageText)));
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", SYSTEM_PROMPT),
+                    Map.of("role", "user", "content", messageText)
+            ));
 
             HttpHeaders headers = new HttpHeaders();
-            headers.set("x-api-key", apiKey);
-            headers.set("anthropic-version", "2023-06-01");
+            headers.setBearerAuth(apiKey);
             headers.setContentType(MediaType.APPLICATION_JSON);
 
             ResponseEntity<Map> response = restTemplate.postForEntity(
-                    CLAUDE_API_URL, new HttpEntity<>(body, headers), Map.class);
+                    OPENAI_API_URL, new HttpEntity<>(body, headers), Map.class);
 
-            List<Map<String, Object>> content = (List<Map<String, Object>>) response.getBody().get("content");
-            String text = ((String) content.get(0).get("text")).trim();
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+            String text = ((String) message.get("content")).trim();
 
-            // Strip markdown code fences if Claude adds them
+            // Strip markdown code fences if the model wraps the JSON
             if (text.startsWith("```")) {
                 text = text.replaceAll("(?s)```[a-z]*\\n?", "").replaceAll("```", "").trim();
             }
@@ -80,7 +82,7 @@ public class ClaudeService {
             return objectMapper.readValue(text, TicketAnalysis.class);
 
         } catch (Exception e) {
-            log.error("Claude analysis failed: {}", e.getMessage());
+            log.error("AI analysis failed: {}", e.getMessage());
             TicketAnalysis noAction = new TicketAnalysis();
             noAction.setAction("NO_ACTION");
             return noAction;
