@@ -57,9 +57,9 @@ public class IntegrationController {
             UUID userId = UUID.fromString(state);
             Map<String, Object> tokenData = slackService.exchangeCodeForToken(code);
             integrationService.saveSlackIntegration(userId, tokenData);
+            response.sendRedirect(frontendUrl + "/dashboard");
         } catch (Exception e) {
-            // Log and redirect back — user will see Slack not connected
+            response.sendRedirect(frontendUrl + "/connect");
         }
-        response.sendRedirect(frontendUrl + "/connect");
     }
 }
