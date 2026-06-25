@@ -1,5 +1,0 @@
-# Copy this file to application-local.properties and fill in your values
-# application-local.properties is gitignored — never commit real credentials
-spring.datasource.url=jdbc:postgresql://<host>/<dbname>?sslmode=require
-spring.datasource.username=<your-db-user>
-spring.datasource.password=<your-db-password>
