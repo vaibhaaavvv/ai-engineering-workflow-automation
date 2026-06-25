@@ -157,7 +157,8 @@ public class SlackService {
                     ? analysis.getAssignee() : "admin";
 
             TicketResponse ticket = ticketService.createTicketFromSlack(
-                    userId, analysis.getTitle(), analysis.getType(), analysis.getPriority(), assignee);
+                    userId, analysis.getTitle(), analysis.getType(), analysis.getPriority(), assignee,
+                    analysis.getDescription());
 
             postCommandConfirmation(channel, ts, botToken, ticket, analysis, assignee);
 
@@ -387,8 +388,9 @@ public class SlackService {
         String type = (String) ticketData.get("type");
         String priority = (String) ticketData.get("priority");
         String assignee = ticketData.getOrDefault("assignee", "admin").toString();
+        String description = (String) ticketData.get("description");
 
-        TicketResponse ticket = ticketService.createTicketFromSlack(userId, title, type, priority, assignee);
+        TicketResponse ticket = ticketService.createTicketFromSlack(userId, title, type, priority, assignee, description);
 
         String channel = (String) ((Map<String, Object>) payload.get("channel")).get("id");
         String ts = (String) ((Map<String, Object>) payload.get("message")).get("ts");

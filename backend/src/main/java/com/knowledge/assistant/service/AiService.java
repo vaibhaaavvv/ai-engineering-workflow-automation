@@ -60,8 +60,8 @@ public class AiService {
         - assignee: extract the first name if the message mentions who should fix it
           ("ask Vaibhav", "Vaibhav should fix this", "@vaibhav" → "Vaibhav"). If nobody is mentioned → "admin"
         - title: under 60 characters, start with an action verb when possible
-        - description: 2-3 sentences covering what is broken or needed, what impact it has,
-          and any relevant context from the message (who reported it, which screen/flow is affected)
+        - description: REQUIRED. 2-3 sentences covering what is broken or needed, what impact it has,
+          and any relevant context from the message (who reported it, which screen/flow is affected). Never omit or leave blank.
         - Messages often mix casual language with a real issue embedded inside them.
           Always scan the ENTIRE message. If any part describes an actionable engineering
           problem, PROPOSE based on that part — ignore the surrounding small talk.
@@ -136,7 +136,7 @@ public class AiService {
 
         --- Rules ---
         - title: under 60 characters, start with an action verb
-        - description: 2-3 sentences covering what needs to be done, why, and any context given
+        - description: REQUIRED. 2-3 sentences covering what needs to be done, why, and any context given. Never omit or leave blank.
         - assignee: extract the name if mentioned ("assign it to Vaibhav", "@vaibhav" → "Vaibhav"). If nobody is mentioned → "admin"
         """;
 

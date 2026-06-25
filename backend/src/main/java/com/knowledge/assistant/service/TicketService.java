@@ -43,6 +43,7 @@ public class TicketService {
         ticket.setTitle(request.getTitle());
         ticket.setPriority(request.getPriority() != null ? request.getPriority() : TicketPriority.MEDIUM);
         ticket.setAssignee(request.getAssignee());
+        ticket.setDescription(request.getDescription());
         ticket.setStatus(TicketStatus.TO_DO);
         ticket.setBranchName(branchName);
 
@@ -89,7 +90,8 @@ public class TicketService {
     }
 
     @Transactional
-    public TicketResponse createTicketFromSlack(UUID userId, String title, String type, String priority, String assignee) {
+    public TicketResponse createTicketFromSlack(UUID userId, String title, String type,
+                                                String priority, String assignee, String description) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
 
@@ -98,6 +100,9 @@ public class TicketService {
         request.setType(TicketType.valueOf(type));
         request.setPriority(TicketPriority.valueOf(priority));
         request.setAssignee(assignee != null && !assignee.isBlank() ? assignee : "admin");
+        request.setDescription(description != null && !description.isBlank()
+                ? description
+                : generateFallbackDescription(title, type));
 
         return createTicket(request, user.getEmail());
     }
@@ -138,6 +143,15 @@ public class TicketService {
         ticketRepository.delete(ticket);
     }
 
+    private String generateFallbackDescription(String title, String type) {
+        return switch (type.toUpperCase()) {
+            case "BUG"     -> title + ". This issue needs investigation to identify the root cause and a fix applied to restore expected behaviour.";
+            case "FEATURE" -> title + ". This capability does not currently exist and needs to be designed and implemented.";
+            case "TASK"    -> title + ". This technical work item needs to be completed as part of ongoing maintenance or improvement.";
+            default        -> title + ". Details and acceptance criteria to be added by the assignee.";
+        };
+    }
+
     private String generateBranchName(String ticketNumber, String title) {
         String[] words = title.toLowerCase()
                 .replaceAll("[^a-z0-9\\s]", "")
@@ -161,6 +175,7 @@ public class TicketService {
                 ticket.getTicketNumber(),
                 ticket.getType(),
                 ticket.getTitle(),
+                ticket.getDescription(),
                 ticket.getPriority(),
                 ticket.getAssignee(),
                 ticket.getStatus(),

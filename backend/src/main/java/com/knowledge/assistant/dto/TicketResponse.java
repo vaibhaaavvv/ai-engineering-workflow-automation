@@ -13,6 +13,7 @@ public class TicketResponse {
     private String ticketNumber;
     private TicketType type;
     private String title;
+    private String description;
     private TicketPriority priority;
     private String assignee;
     private TicketStatus status;
@@ -23,12 +24,14 @@ public class TicketResponse {
     public TicketResponse() {}
 
     public TicketResponse(UUID id, String ticketNumber, TicketType type, String title,
-                          TicketPriority priority, String assignee, TicketStatus status,
-                          String branchName, LocalDateTime createdAt, LocalDateTime updatedAt) {
+                          String description, TicketPriority priority, String assignee,
+                          TicketStatus status, String branchName,
+                          LocalDateTime createdAt, LocalDateTime updatedAt) {
         this.id = id;
         this.ticketNumber = ticketNumber;
         this.type = type;
         this.title = title;
+        this.description = description;
         this.priority = priority;
         this.assignee = assignee;
         this.status = status;
@@ -48,6 +51,9 @@ public class TicketResponse {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public TicketPriority getPriority() { return priority; }
     public void setPriority(TicketPriority priority) { this.priority = priority; }

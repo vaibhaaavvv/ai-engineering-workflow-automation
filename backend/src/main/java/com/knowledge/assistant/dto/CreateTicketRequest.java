@@ -18,6 +18,8 @@ public class CreateTicketRequest {
     @NotBlank(message = "Assignee (GitHub username) is required")
     private String assignee;
 
+    private String description;
+
     public CreateTicketRequest() {}
 
     public TicketType getType() { return type; }
@@ -31,4 +33,7 @@ public class CreateTicketRequest {
 
     public String getAssignee() { return assignee; }
     public void setAssignee(String assignee) { this.assignee = assignee; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 }

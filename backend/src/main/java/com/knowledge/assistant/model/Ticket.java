@@ -33,6 +33,9 @@ public class Ticket {
     @Column(nullable = false)
     private String title;
 
+    @Column(columnDefinition = "TEXT")
+    private String description;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private TicketPriority priority;
@@ -74,6 +77,9 @@ public class Ticket {
 
     public String getTitle() { return title; }
     public void setTitle(String title) { this.title = title; }
+
+    public String getDescription() { return description; }
+    public void setDescription(String description) { this.description = description; }
 
     public TicketPriority getPriority() { return priority; }
     public void setPriority(TicketPriority priority) { this.priority = priority; }
