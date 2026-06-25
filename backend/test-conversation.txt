@@ -1,0 +1,217 @@
+--- Test Conversation: Alex & Priya (Engineering Team Slack) ---
+A realistic back-and-forth between two engineers during a regular workday.
+Expected bot behaviour is noted next to each message.
+
+Tickets this script should produce (in order of appearance):
+  T-1  BUG   · CRITICAL · login page broken for old users       → message [6]
+  T-2  BUG   · MEDIUM   · dashboard loads in 8-10 seconds       → message [10]
+  T-3  FEAT  · MEDIUM   · export ticket list to CSV             → message [15]
+  T-4  TASK  · HIGH     · upgrade Node 14 → 20 (security risk)  → message [17]
+  DUPE of T-2            · dashboard still slow                  → message [19]
+  T-5  BUG   · CRITICAL · payment checkout 500 in prod          → message [21]
+  T-6  FEAT  · MEDIUM   · filter tickets by assignee            → message [25]
+
+======================================================================
+
+[1]  Alex: morning! you catch that game last night?
+EXPECTED → NO_ACTION (pure casual)
+
+----------------------------------------------------------------------
+
+[2]  Priya: lol no i was buried in PRs til midnight 😅 what happened
+EXPECTED → NO_ACTION (casual)
+
+----------------------------------------------------------------------
+
+[3]  Alex: they lost in OT it was brutal. anyway how are we looking
+           for the release today?
+EXPECTED → NO_ACTION (casual question, no engineering problem)
+
+----------------------------------------------------------------------
+
+[4]  Priya: i think we're mostly fine. Raj already deployed the
+            hotfix from yesterday and CI is green
+EXPECTED → NO_ACTION (status update, nothing broken)
+
+----------------------------------------------------------------------
+
+[5]  Alex: nice. oh quick thing — did you see the support channel?
+           there are like 5 users in a row saying they can't log in at
+           all. the page just spins and never goes through. started
+           maybe 2-3 hours ago
+EXPECTED → NO_ACTION
+           (NOTE: this has "can't log in" + "started 2-3 hours ago" which IS
+            actionable, but it's framed as a question to Priya. The bot may
+            PROPOSE here — both outcomes are acceptable. The definitive ticket
+            should come from [6] once Priya confirms it.)
+
+----------------------------------------------------------------------
+
+[6]  Priya: yeah i just saw that. looks like it's affecting users who
+            signed up before last Thursday — something in the auth
+            migration broke their session tokens. this is pretty bad,
+            Vaibhav owns that code, he should drop everything for it
+EXPECTED → PROPOSE · BUG · CRITICAL · Assignee: Vaibhav
+           (broken login for a subset of users, caused by migration, prod impact)
+
+----------------------------------------------------------------------
+
+[7]  Alex: pinging him now
+EXPECTED → NO_ACTION (one-liner, no new information)
+
+----------------------------------------------------------------------
+
+[8]  Priya: also while we're at it — can someone check if the
+            password reset flow is affected too? if their session
+            tokens are broken the reset might be as well
+EXPECTED → NO_ACTION or DUPLICATE
+           (related to the auth issue already raised in [6]. Correct behaviour
+            is either NO_ACTION or DUPLICATE — no new independent ticket.)
+
+----------------------------------------------------------------------
+
+[9]  Alex: good call. Vaibhav said he's looking at it now. btw
+           totally separate topic — have you noticed the dashboard
+           taking ages to load? like after you log in it just hangs
+           for a solid 8-10 seconds before anything shows up
+EXPECTED → NO_ACTION
+           (Alex is asking Priya if she noticed — framed as a question.
+            The bot may or may not propose here. Main ticket comes in [10].)
+
+----------------------------------------------------------------------
+
+[10] Priya: YES omg i thought it was just my laptop but i've seen it
+            on two different machines. it's been like this for at least
+            3 days. definitely something wrong with the initial data
+            fetch. makes the whole app feel broken on first load
+EXPECTED → PROPOSE · BUG · MEDIUM
+           (confirmed by both, multi-machine, days-long, specific flow affected)
+
+----------------------------------------------------------------------
+
+[11] Alex: agreed. i'll add it to the board
+EXPECTED → NO_ACTION (acknowledgement)
+
+----------------------------------------------------------------------
+
+[12] Priya: btw did the design handoff for the new onboarding flow
+            come through? i haven't seen anything in Figma yet
+EXPECTED → NO_ACTION (process/coordination question, not an engineering problem)
+
+----------------------------------------------------------------------
+
+[13] Alex: not yet, Maya said EOD today. shouldn't block us anyway
+           since we haven't started that sprint
+EXPECTED → NO_ACTION (status update, no action item)
+
+----------------------------------------------------------------------
+
+[14] Priya: ok cool. oh also — i was showing the app to a potential
+            customer yesterday and they immediately asked if they can
+            export tickets to a spreadsheet. we obviously don't have
+            that. they use Excel for everything 😂
+EXPECTED → NO_ACTION
+           (introduces the idea but framed as an anecdote. Main ticket in [15].)
+
+----------------------------------------------------------------------
+
+[15] Alex: haha yeah that comes up all the time. honestly it's not
+           that hard to add — just a CSV dump of the ticket list.
+           we should build it, i'd say medium priority
+EXPECTED → PROPOSE · FEATURE · MEDIUM
+           (new capability, doesn't exist, specific output format mentioned)
+
+----------------------------------------------------------------------
+
+[16] Priya: agreed, let's put it on the backlog
+EXPECTED → NO_ACTION (acknowledgement)
+
+----------------------------------------------------------------------
+
+[17] Alex: hey while we're doing housekeeping — we're still running
+           Node 14 on the backend workers. it hit end-of-life last
+           year and we haven't upgraded. i keep seeing security
+           advisories for it. we really need to get to Node 20
+EXPECTED → PROPOSE · TASK · HIGH
+           (technical upgrade, security risk explicitly mentioned, EOL software)
+
+----------------------------------------------------------------------
+
+[18] Priya: ugh yes that's been on the backlog forever. ok i'll
+            put it on the next sprint planning
+EXPECTED → NO_ACTION (acknowledgement)
+
+----------------------------------------------------------------------
+
+[19] Alex: also the dashboard loading thing — it's still super slow
+           right? like we haven't fixed that yet
+EXPECTED → DUPLICATE
+           (same dashboard performance issue already proposed in [10].
+            No new information — bot should detect the existing open ticket.)
+
+----------------------------------------------------------------------
+
+[20] Priya: nope still slow. ok switching gears — lunch? i'm starving
+EXPECTED → NO_ACTION (casual)
+
+----------------------------------------------------------------------
+
+[21] Alex: yeah in a sec. WAIT — just got a DM from support.
+           checkout is completely broken in production. users are
+           hitting a 500 when they try to complete a purchase.
+           like right now. multiple reports coming in
+EXPECTED → PROPOSE · BUG · CRITICAL
+           (production revenue path down, 500 error, multiple reports, right now)
+
+----------------------------------------------------------------------
+
+[22] Priya: oh god. ok lunch is cancelled lol
+EXPECTED → NO_ACTION (reaction)
+
+----------------------------------------------------------------------
+
+[23] Alex: who owns the payment service? is it Vaibhav again?
+EXPECTED → NO_ACTION (question, no new problem described)
+
+----------------------------------------------------------------------
+
+[24] Priya: no i think it's Raj. pinging him. ok he's on it
+EXPECTED → NO_ACTION (coordination, no new ticket needed)
+
+----------------------------------------------------------------------
+
+[25] Alex: cool. hey random thought while this is happening — on the
+           dashboard it would be really useful to be able to filter
+           tickets by who they're assigned to. right now everything
+           is just one big list and it's hard to see your own work
+EXPECTED → PROPOSE · FEATURE · MEDIUM · Assignee: admin
+           (new filter capability, clear user pain point, no specific dev mentioned)
+
+----------------------------------------------------------------------
+
+[26] Priya: yes please. i've wanted that since day one
+EXPECTED → NO_ACTION (agreement, no new info)
+
+----------------------------------------------------------------------
+
+[27] Alex: ok raj fixed the checkout thing. payments are back.
+           what a morning 😅
+EXPECTED → NO_ACTION (resolution update, casual)
+
+----------------------------------------------------------------------
+
+[28] Priya: thank god. ok NOW can we get lunch
+EXPECTED → NO_ACTION (casual)
+
+----------------------------------------------------------------------
+
+END OF TEST CONVERSATION
+
+Summary of what the bot should have produced by the end:
+  ✓ BUG   CRITICAL  — Login broken for pre-migration users (Vaibhav)   [6]
+  ✓ BUG   MEDIUM    — Dashboard 8-10 second load time                  [10]
+  ✓ FEAT  MEDIUM    — Export ticket list to CSV                        [15]
+  ✓ TASK  HIGH      — Upgrade Node 14 to Node 20                       [17]
+  ✗ DUPE            — Dashboard slow (same as above)                   [19]
+  ✓ BUG   CRITICAL  — Checkout 500 error in production                 [21]
+  ✓ FEAT  MEDIUM    — Filter tickets by assignee                       [25]
