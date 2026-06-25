@@ -62,7 +62,7 @@ public class SecurityConfig {
             "http://localhost:*",      // any local Vite/dev port
             "https://*.vercel.app"     // Vercel deployments
         ));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 
