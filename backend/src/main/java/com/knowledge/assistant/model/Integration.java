@@ -31,22 +31,6 @@ public class Integration {
     @Column(name = "slack_team_id")
     private String slackTeamId;
 
-    @Column(name = "slack_channel_id")
-    private String slackChannelId;
-
-    @Column(name = "slack_channel_name")
-    private String slackChannelName;
-
-    // GitHub-specific
-    @Column(name = "github_repo_owner")
-    private String githubRepoOwner;
-
-    @Column(name = "github_repo_name")
-    private String githubRepoName;
-
-    @Column(name = "github_default_branch")
-    private String githubDefaultBranch;
-
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
@@ -71,21 +55,6 @@ public class Integration {
 
     public String getSlackTeamId() { return slackTeamId; }
     public void setSlackTeamId(String slackTeamId) { this.slackTeamId = slackTeamId; }
-
-    public String getSlackChannelId() { return slackChannelId; }
-    public void setSlackChannelId(String slackChannelId) { this.slackChannelId = slackChannelId; }
-
-    public String getSlackChannelName() { return slackChannelName; }
-    public void setSlackChannelName(String slackChannelName) { this.slackChannelName = slackChannelName; }
-
-    public String getGithubRepoOwner() { return githubRepoOwner; }
-    public void setGithubRepoOwner(String githubRepoOwner) { this.githubRepoOwner = githubRepoOwner; }
-
-    public String getGithubRepoName() { return githubRepoName; }
-    public void setGithubRepoName(String githubRepoName) { this.githubRepoName = githubRepoName; }
-
-    public String getGithubDefaultBranch() { return githubDefaultBranch; }
-    public void setGithubDefaultBranch(String githubDefaultBranch) { this.githubDefaultBranch = githubDefaultBranch; }
 
     public LocalDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(LocalDateTime createdAt) { this.createdAt = createdAt; }

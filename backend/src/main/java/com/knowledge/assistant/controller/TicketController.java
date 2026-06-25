@@ -38,13 +38,6 @@ public class TicketController {
         return ResponseEntity.ok(ticketService.getTickets(auth.getName()));
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<TicketResponse> getTicket(
-            @PathVariable UUID id,
-            Authentication auth) {
-        return ResponseEntity.ok(ticketService.getTicket(id, auth.getName()));
-    }
-
     @PatchMapping("/{id}/status")
     public ResponseEntity<TicketResponse> updateStatus(
             @PathVariable UUID id,

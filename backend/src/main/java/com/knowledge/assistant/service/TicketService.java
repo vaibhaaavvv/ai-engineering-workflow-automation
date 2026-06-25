@@ -67,16 +67,6 @@ public class TicketService {
                 .collect(Collectors.toList());
     }
 
-    public TicketResponse getTicket(UUID id, String userEmail) {
-        User user = userRepository.findByEmail(userEmail)
-                .orElseThrow(() -> new NoSuchElementException("User not found"));
-
-        Ticket ticket = ticketRepository.findByIdAndUserId(id, user.getId())
-                .orElseThrow(() -> new NoSuchElementException("Ticket not found"));
-
-        return toResponse(ticket);
-    }
-
     @Transactional
     public TicketResponse updateStatus(UUID id, TicketStatus status, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
