@@ -1,11 +1,16 @@
 package com.knowledge.assistant.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knowledge.assistant.dto.SlackUpdateCommand;
 import com.knowledge.assistant.dto.TicketAnalysis;
 import com.knowledge.assistant.dto.TicketResponse;
 import com.knowledge.assistant.model.Integration;
 import com.knowledge.assistant.model.TicketPriority;
 import com.knowledge.assistant.model.TicketType;
+
+import java.util.NoSuchElementException;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -126,8 +131,23 @@ public class SlackService {
             String botToken = integration.getAccessToken();
             UUID userId = integration.getUserId();
 
-            if (commandText.toLowerCase().startsWith("test-run") || commandText.toLowerCase().startsWith("test run")) {
+            String lower = commandText.toLowerCase();
+            Matcher ticketMatcher = Pattern.compile("\\bT-\\d+\\b", Pattern.CASE_INSENSITIVE).matcher(commandText);
+            boolean hasTicketId = ticketMatcher.find();
+            String ticketId = hasTicketId ? ticketMatcher.group().toUpperCase() : null;
+
+            if (lower.startsWith("test-run") || lower.startsWith("test run")) {
                 runTestConversation(channel, botToken, userId);
+                return;
+            }
+
+            if (hasTicketId && (lower.contains("delete") || lower.contains("remove"))) {
+                handleDeleteCommand(channel, ts, botToken, userId, ticketId);
+                return;
+            }
+
+            if (hasTicketId) {
+                handleUpdateCommand(channel, ts, botToken, userId, commandText);
                 return;
             }
 
@@ -143,6 +163,55 @@ public class SlackService {
 
         } catch (Exception e) {
             log.error("Failed to process Slack command: {}", e.getMessage());
+        }
+    }
+
+    private void handleUpdateCommand(String channel, String ts, String botToken,
+                                      UUID userId, String commandText) throws Exception {
+        SlackUpdateCommand cmd = aiService.extractUpdateCommand(commandText);
+
+        if (cmd == null || cmd.getTicketNumber() == null || cmd.getField() == null || cmd.getValue() == null) {
+            postToSlack(channel, ts, botToken, List.of(Map.of(
+                    "type", "section",
+                    "text", Map.of("type", "mrkdwn", "text",
+                            "Couldn't parse that update. Please include the ticket ID (e.g. T-001) and what to change.")
+            )));
+            return;
+        }
+
+        try {
+            TicketResponse ticket = ticketService.updateTicketFromSlack(
+                    userId, cmd.getTicketNumber(), cmd.getField(), cmd.getValue());
+            postToSlack(channel, ts, botToken, List.of(Map.of(
+                    "type", "section",
+                    "text", Map.of("type", "mrkdwn", "text",
+                            ":pencil2: Updated *" + ticket.getTicketNumber() + "* — " + ticket.getTitle() + "\n" +
+                            "*" + cmd.getField() + "* → *" + cmd.getValue() + "*")
+            )));
+        } catch (NoSuchElementException e) {
+            postToSlack(channel, ts, botToken, List.of(Map.of(
+                    "type", "section",
+                    "text", Map.of("type", "mrkdwn", "text",
+                            ":x: Ticket *" + cmd.getTicketNumber() + "* not found.")
+            )));
+        }
+    }
+
+    private void handleDeleteCommand(String channel, String ts, String botToken,
+                                      UUID userId, String ticketId) throws Exception {
+        try {
+            TicketResponse ticket = ticketService.deleteTicketFromSlack(userId, ticketId);
+            postToSlack(channel, ts, botToken, List.of(Map.of(
+                    "type", "section",
+                    "text", Map.of("type", "mrkdwn", "text",
+                            ":wastebasket: Deleted *" + ticket.getTicketNumber() + "* — " + ticket.getTitle())
+            )));
+        } catch (NoSuchElementException e) {
+            postToSlack(channel, ts, botToken, List.of(Map.of(
+                    "type", "section",
+                    "text", Map.of("type", "mrkdwn", "text",
+                            ":x: Ticket *" + ticketId + "* not found.")
+            )));
         }
     }
 

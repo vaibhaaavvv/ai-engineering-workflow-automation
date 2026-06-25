@@ -1,6 +1,7 @@
 package com.knowledge.assistant.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.knowledge.assistant.dto.SlackUpdateCommand;
 import com.knowledge.assistant.dto.TicketAnalysis;
 import com.knowledge.assistant.dto.TicketResponse;
 import org.slf4j.Logger;
@@ -177,6 +178,63 @@ public class AiService {
             fallback.setPriority("MEDIUM");
             fallback.setAssignee("admin");
             return fallback;
+        }
+    }
+
+    private static final String UPDATE_SYSTEM_PROMPT = """
+        You are a ticket update parser. Extract what to update from a Slack command.
+        Return ONLY valid JSON — no markdown, no explanation.
+
+        Always return:
+        {"ticketNumber":"T-XXX","field":"ASSIGNEE|STATUS|TITLE|PRIORITY","value":"..."}
+
+        --- Field mapping ---
+        ASSIGNEE → extract the person's name exactly as written (e.g. "Kaustubh", "admin")
+        STATUS   → must be one of: TO_DO, IN_PROGRESS, PR_RAISED, READY_FOR_DEPLOYMENT, COMPLETED
+                   Map natural language:
+                   "to do" / "todo" / "backlog"               → TO_DO
+                   "in progress" / "started" / "working on"   → IN_PROGRESS
+                   "pr raised" / "pr" / "review"              → PR_RAISED
+                   "ready for deployment" / "ready to deploy" / "ready for deploy" / "staging" → READY_FOR_DEPLOYMENT
+                   "completed" / "done" / "finished" / "closed" → COMPLETED
+        TITLE    → the new title text as intended
+        PRIORITY → one of: LOW, MEDIUM, HIGH, CRITICAL
+
+        --- Ticket number ---
+        Find the T-XXX pattern (case-insensitive) and return it uppercase, e.g. T-001.
+        """;
+
+    @SuppressWarnings("unchecked")
+    public SlackUpdateCommand extractUpdateCommand(String commandText) {
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", "gpt-4o-mini");
+            body.put("max_tokens", 150);
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", UPDATE_SYSTEM_PROMPT),
+                    Map.of("role", "user", "content", commandText)
+            ));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    OPENAI_API_URL, new HttpEntity<>(body, headers), Map.class);
+
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+            String text = ((String) message.get("content")).trim();
+
+            if (text.startsWith("```")) {
+                text = text.replaceAll("(?s)```[a-z]*\\n?", "").replaceAll("```", "").trim();
+            }
+
+            return objectMapper.readValue(text, SlackUpdateCommand.class);
+
+        } catch (Exception e) {
+            log.error("Update command extraction failed: {}", e.getMessage());
+            return null;
         }
     }
 

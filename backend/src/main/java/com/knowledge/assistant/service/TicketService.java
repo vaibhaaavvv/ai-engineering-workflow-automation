@@ -103,6 +103,31 @@ public class TicketService {
     }
 
     @Transactional
+    public TicketResponse updateTicketFromSlack(UUID userId, String ticketNumber, String field, String value) {
+        Ticket ticket = ticketRepository.findByTicketNumberAndUserId(ticketNumber.toUpperCase(), userId)
+                .orElseThrow(() -> new NoSuchElementException("Ticket " + ticketNumber + " not found"));
+
+        switch (field.toUpperCase()) {
+            case "ASSIGNEE"  -> ticket.setAssignee(value);
+            case "STATUS"    -> ticket.setStatus(TicketStatus.valueOf(value));
+            case "TITLE"     -> ticket.setTitle(value);
+            case "PRIORITY"  -> ticket.setPriority(TicketPriority.valueOf(value));
+            default          -> throw new IllegalArgumentException("Unknown field: " + field);
+        }
+
+        return toResponse(ticketRepository.save(ticket));
+    }
+
+    @Transactional
+    public TicketResponse deleteTicketFromSlack(UUID userId, String ticketNumber) {
+        Ticket ticket = ticketRepository.findByTicketNumberAndUserId(ticketNumber.toUpperCase(), userId)
+                .orElseThrow(() -> new NoSuchElementException("Ticket " + ticketNumber + " not found"));
+        TicketResponse response = toResponse(ticket);
+        ticketRepository.delete(ticket);
+        return response;
+    }
+
+    @Transactional
     public void deleteTicket(UUID id, String userEmail) {
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new NoSuchElementException("User not found"));
