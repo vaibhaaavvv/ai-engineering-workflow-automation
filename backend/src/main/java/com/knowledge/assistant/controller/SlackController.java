@@ -38,8 +38,13 @@ public class SlackController {
             @SuppressWarnings("unchecked")
             Map<String, Object> event = (Map<String, Object>) payload.get("event");
             String teamId = (String) payload.get("team_id");
+            String eventType = (String) event.get("type");
             // Process asynchronously so we return 200 immediately (Slack requires < 3s)
-            slackService.processMessage(event, teamId);
+            if ("app_mention".equals(eventType)) {
+                slackService.processCommand(event, teamId);
+            } else {
+                slackService.processMessage(event, teamId);
+            }
         }
 
         return ResponseEntity.ok(Map.of());

@@ -114,6 +114,72 @@ public class AiService {
         }
     }
 
+    private static final String COMMAND_SYSTEM_PROMPT = """
+        You are a ticket extraction assistant. The user has explicitly asked to create a ticket.
+        Extract the ticket details from their message and return ONLY valid JSON — no markdown, no explanation.
+
+        Always return:
+        {"title":"...","type":"BUG|FEATURE|TASK|CHORE","priority":"LOW|MEDIUM|HIGH|CRITICAL","description":"...","assignee":"..."}
+
+        --- Type Classification ---
+        BUG     — something broken, not working, crashing, or behaving wrongly
+        FEATURE — new capability or improvement
+        TASK    — technical work: refactoring, config changes, migrations, upgrades
+        CHORE   — documentation, cleanup, routine maintenance
+
+        --- Priority ---
+        CRITICAL — production down, data loss, security vulnerability
+        HIGH     — major feature broken, many users affected
+        MEDIUM   — partial functionality broken, or impactful feature request
+        LOW      — minor issue, cosmetic, or low-traffic path
+
+        --- Rules ---
+        - title: under 60 characters, start with an action verb
+        - description: 2-3 sentences covering what needs to be done, why, and any context given
+        - assignee: extract the name if mentioned ("assign it to Vaibhav", "@vaibhav" → "Vaibhav"). If nobody is mentioned → "admin"
+        """;
+
+    public TicketAnalysis extractTicketFromCommand(String commandText) {
+        try {
+            Map<String, Object> body = new LinkedHashMap<>();
+            body.put("model", "gpt-4o-mini");
+            body.put("max_tokens", 400);
+            body.put("messages", List.of(
+                    Map.of("role", "system", "content", COMMAND_SYSTEM_PROMPT),
+                    Map.of("role", "user", "content", commandText)
+            ));
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setBearerAuth(apiKey);
+            headers.setContentType(MediaType.APPLICATION_JSON);
+
+            ResponseEntity<Map> response = restTemplate.postForEntity(
+                    OPENAI_API_URL, new HttpEntity<>(body, headers), Map.class);
+
+            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.getBody().get("choices");
+            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
+            String text = ((String) message.get("content")).trim();
+
+            if (text.startsWith("```")) {
+                text = text.replaceAll("(?s)```[a-z]*\\n?", "").replaceAll("```", "").trim();
+            }
+
+            TicketAnalysis analysis = objectMapper.readValue(text, TicketAnalysis.class);
+            analysis.setAction("PROPOSE");
+            return analysis;
+
+        } catch (Exception e) {
+            log.error("AI command extraction failed: {}", e.getMessage());
+            TicketAnalysis fallback = new TicketAnalysis();
+            fallback.setAction("PROPOSE");
+            fallback.setTitle("Ticket from Slack command");
+            fallback.setType("TASK");
+            fallback.setPriority("MEDIUM");
+            fallback.setAssignee("admin");
+            return fallback;
+        }
+    }
+
     private String buildUserContent(String messageText, List<TicketResponse> openTickets) {
         StringBuilder sb = new StringBuilder();
         sb.append("Slack message:\n").append(messageText);

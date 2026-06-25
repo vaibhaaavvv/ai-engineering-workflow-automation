@@ -49,7 +49,7 @@ public class SlackService {
     public String buildOAuthUrl(String userId) {
         return "https://slack.com/oauth/v2/authorize" +
                 "?client_id=" + clientId +
-                "&scope=channels:history,groups:history,chat:write" +
+                "&scope=channels:history,groups:history,chat:write,app_mentions:read" +
                 "&redirect_uri=" + redirectUri +
                 "&state=" + userId;
     }
@@ -71,6 +71,65 @@ public class SlackService {
                 Map.class);
 
         return response.getBody();
+    }
+
+    @Async
+    @SuppressWarnings("unchecked")
+    public void processCommand(Map<String, Object> event, String teamId) {
+        try {
+            String rawText = (String) event.get("text");
+            if (rawText == null || rawText.isBlank()) return;
+
+            // Strip the bot mention (<@BOTID>) from the text
+            String commandText = rawText.replaceAll("<@[A-Z0-9]+>", "").trim();
+            if (commandText.isBlank()) return;
+
+            String channel = (String) event.get("channel");
+            String ts = (String) event.get("ts");
+
+            Optional<Integration> integrationOpt = integrationService.getBySlackTeamId(teamId);
+            if (integrationOpt.isEmpty()) return;
+
+            Integration integration = integrationOpt.get();
+            String botToken = integration.getAccessToken();
+            UUID userId = integration.getUserId();
+
+            TicketAnalysis analysis = aiService.extractTicketFromCommand(commandText);
+
+            String assignee = (analysis.getAssignee() != null && !analysis.getAssignee().isBlank())
+                    ? analysis.getAssignee() : "admin";
+
+            TicketResponse ticket = ticketService.createTicketFromSlack(
+                    userId, analysis.getTitle(), analysis.getType(), analysis.getPriority(), assignee);
+
+            postCommandConfirmation(channel, ts, botToken, ticket, analysis, assignee);
+
+        } catch (Exception e) {
+            log.error("Failed to process Slack command: {}", e.getMessage());
+        }
+    }
+
+    private void postCommandConfirmation(String channel, String threadTs, String botToken,
+                                          TicketResponse ticket, TicketAnalysis analysis,
+                                          String assignee) throws Exception {
+        List<Map<String, Object>> blocks = new ArrayList<>();
+
+        blocks.add(Map.of(
+                "type", "section",
+                "text", Map.of("type", "mrkdwn", "text",
+                        ":white_check_mark: *Ticket created: " + ticket.getTicketNumber() + "*\n\n" +
+                        "*" + ticket.getType() + " · " + ticket.getPriority() + "*\n" +
+                        ticket.getTitle() + "\n:bust_in_silhouette: Assignee: *" + assignee + "*")
+        ));
+
+        if (analysis.getDescription() != null && !analysis.getDescription().isBlank()) {
+            blocks.add(Map.of(
+                    "type", "context",
+                    "elements", List.of(Map.of("type", "mrkdwn", "text", analysis.getDescription()))
+            ));
+        }
+
+        postToSlack(channel, threadTs, botToken, blocks);
     }
 
     @Async
