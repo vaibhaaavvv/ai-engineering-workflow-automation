@@ -127,7 +127,7 @@ public class SlackService {
             UUID userId = integration.getUserId();
 
             if (commandText.toLowerCase().startsWith("test-run") || commandText.toLowerCase().startsWith("test run")) {
-                runTestConversation(channel, ts, botToken, userId);
+                runTestConversation(channel, botToken, userId);
                 return;
             }
 
@@ -146,81 +146,53 @@ public class SlackService {
         }
     }
 
-    private void runTestConversation(String channel, String ts, String botToken, UUID userId) throws Exception {
-        // Post the opening header
-        postToSlack(channel, ts, botToken, List.of(Map.of(
-                "type", "section",
-                "text", Map.of("type", "mrkdwn", "text",
-                        ":test_tube: *Test run started* — replaying a 28-message conversation between Alex & Priya.\n" +
-                        "Analysing each message. Results will appear below as they come in...")
-        )));
-
-        // Seed with real open tickets so the model can detect duplicates against existing board state
+    @SuppressWarnings("unchecked")
+    private void runTestConversation(String channel, String botToken, UUID userId) throws Exception {
         List<TicketResponse> openTickets = new ArrayList<>(ticketService.getOpenTicketsByUserId(userId));
 
-        int ticketCounter = 0;
-        int dupCounter = 0;
-        int noActionCounter = 0;
+        for (String line : TEST_SCRIPT) {
+            // Post the line as a real top-level channel message (no thread)
+            String messageTs = postChannelMessage(channel, botToken, line);
 
-        for (int i = 0; i < TEST_SCRIPT.size(); i++) {
-            String message = TEST_SCRIPT.get(i);
-            TicketAnalysis analysis = aiService.analyzeMessage(message, openTickets);
-            String action = analysis.getAction();
+            // Analyse it exactly like a real incoming message
+            TicketAnalysis analysis = aiService.analyzeMessage(line, openTickets);
 
-            if ("PROPOSE".equals(action)) {
-                ticketCounter++;
+            if ("PROPOSE".equals(analysis.getAction())) {
                 String assignee = (analysis.getAssignee() != null && !analysis.getAssignee().isBlank())
                         ? analysis.getAssignee() : "admin";
 
-                // Add this proposed ticket to openTickets so subsequent messages can detect it as a duplicate
+                // Track proposed ticket so later messages can detect duplicates within the run
                 TicketResponse mock = new TicketResponse();
-                mock.setTicketNumber("T-TEST-" + ticketCounter);
+                mock.setTicketNumber("T-SIM-" + (openTickets.size() + 1));
                 mock.setTitle(analysis.getTitle());
                 mock.setType(safeType(analysis.getType()));
                 mock.setPriority(safePriority(analysis.getPriority()));
                 mock.setAssignee(assignee);
                 openTickets.add(mock);
 
-                List<Map<String, Object>> blocks = new ArrayList<>();
-                blocks.add(Map.of(
-                        "type", "section",
-                        "text", Map.of("type", "mrkdwn", "text",
-                                ":ticket: *[" + (i + 1) + "] " + message + "*\n\n" +
-                                "`" + analysis.getType() + "` `" + analysis.getPriority() + "`  " +
-                                analysis.getTitle() + "  :bust_in_silhouette: *" + assignee + "*")
-                ));
-                if (analysis.getDescription() != null && !analysis.getDescription().isBlank()) {
-                    blocks.add(Map.of(
-                            "type", "context",
-                            "elements", List.of(Map.of("type", "mrkdwn", "text", analysis.getDescription()))
-                    ));
-                }
-                postToSlack(channel, ts, botToken, blocks);
-
-            } else if ("DUPLICATE".equals(action)) {
-                dupCounter++;
-                postToSlack(channel, ts, botToken, List.of(Map.of(
-                        "type", "section",
-                        "text", Map.of("type", "mrkdwn", "text",
-                                ":twisted_rightwards_arrows: *[" + (i + 1) + "] Duplicate detected*\n" +
-                                "_" + message + "_")
-                )));
-            } else {
-                noActionCounter++;
+                // Reply in that message's thread — identical to the normal proposal flow
+                postProposal(channel, messageTs, botToken, analysis, userId);
             }
-        }
+            // DUPLICATE and NO_ACTION → silent, same as real message processing
 
-        // Summary
-        postToSlack(channel, ts, botToken, List.of(
-                Map.of("type", "divider"),
-                Map.of("type", "section",
-                        "text", Map.of("type", "mrkdwn", "text",
-                                ":white_check_mark: *Test run complete*\n\n" +
-                                ":ticket: Tickets proposed: *" + ticketCounter + "*\n" +
-                                ":twisted_rightwards_arrows: Duplicates caught: *" + dupCounter + "*\n" +
-                                ":mute: No-action (casual): *" + noActionCounter + "*\n\n" +
-                                "_No real tickets were created. This was a read-only simulation._"))
-        ));
+            Thread.sleep(1000);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private String postChannelMessage(String channel, String botToken, String text) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setBearerAuth(botToken);
+        headers.setContentType(MediaType.APPLICATION_JSON);
+
+        Map<String, Object> body = Map.of("channel", channel, "text", text);
+
+        ResponseEntity<Map> response = restTemplate.postForEntity(
+                "https://slack.com/api/chat.postMessage",
+                new HttpEntity<>(body, headers),
+                Map.class);
+
+        return (String) response.getBody().get("ts");
     }
 
     private TicketType safeType(String type) {
