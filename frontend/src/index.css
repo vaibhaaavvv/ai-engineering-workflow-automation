@@ -1,0 +1,95 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+* { box-sizing: border-box; }
+
+body {
+  margin: 0;
+  background-color: #0e0f1c;
+  color: #e9eaf5;
+  font-family: 'Inter', system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+/* ── Page transitions ── */
+@keyframes pageEnter {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+    filter: blur(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+    filter: blur(0);
+  }
+}
+
+/* ── Modal transitions ── */
+@keyframes backdropEnter {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes backdropExit {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes modalEnter {
+  from {
+    opacity: 0;
+    transform: scale(0.93) translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+@keyframes modalExit {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: scale(0.97) translateY(8px);
+  }
+}
+
+.page-enter {
+  animation: pageEnter 0.55s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.backdrop-enter {
+  animation: backdropEnter 0.2s ease both;
+}
+.backdrop-exit {
+  animation: backdropExit 0.22s ease both;
+}
+.modal-enter {
+  animation: modalEnter 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+.modal-exit {
+  animation: modalExit 0.22s cubic-bezier(0.4, 0, 1, 1) both;
+}
+
+@layer components {
+  .input-field {
+    @apply w-full bg-[#111224] border border-[#252641] text-[#e9eaf5] placeholder-[#4a4b6a]
+           rounded-xl px-4 py-3.5 text-lg outline-none transition-all duration-200
+           focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20;
+  }
+
+  .btn-primary {
+    @apply w-full bg-gradient-to-r from-indigo-600 to-violet-600 text-white font-semibold
+           py-3.5 rounded-xl text-lg transition-all duration-200 cursor-pointer
+           hover:from-indigo-500 hover:to-violet-500 hover:shadow-lg hover:shadow-indigo-500/25
+           active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+}
