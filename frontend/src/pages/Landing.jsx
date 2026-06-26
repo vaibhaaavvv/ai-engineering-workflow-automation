@@ -1,5 +1,5 @@
 import { Link } from 'react-router-dom'
-import { ArrowRight, Zap, GitBranch, RefreshCw, MessageSquare, Bot, LayoutGrid } from 'lucide-react'
+import { ArrowRight, Zap, GitBranch, RefreshCw, MessageSquare, Bot, LayoutGrid, Play } from 'lucide-react'
 import { Logo, LogoMark } from '../components/Logo'
 
 function LandingNav() {
@@ -262,6 +262,14 @@ export default function Landing() {
               >
                 Sign in
               </Link>
+              <a
+                href="https://youtu.be/9B9p3FcI9L0?si=P6WS7UyelBs40bf2"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-2 px-6 py-3.5 text-[#9293af] hover:text-[#e9eaf5] font-semibold transition-all text-base"
+              >
+                <Play size={16} className="text-indigo-400" /> Watch demo
+              </a>
             </div>
 
             <p className="text-[#3a3b55] text-sm mt-6">No credit card required · Works with any Slack workspace</p>
